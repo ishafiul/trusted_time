@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trusted_time/trusted_time.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,10 +20,13 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final upTime = UptimeFFI();
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('Plugin example app')),
-        body: Center(child: Text('Hello there \n')),
+        body: Center(
+          child: Text('Current Up time :${upTime.getUptimeMillis()} \n'),
+        ),
       ),
     );
   }
