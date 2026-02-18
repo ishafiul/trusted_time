@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -12,6 +13,9 @@ import 'native_uptime.dart';
 /// - Anchors it to native monotonic uptime (via FFI)
 /// - Calculates current time using uptime delta
 /// - Does NOT rely on device clock or timezone
+///
+/// If initialization fails or hasn't occurred, it falls back to
+/// device system time and logs a warning.
 ///
 /// Recommended usage:
 /// ```dart
@@ -98,6 +102,7 @@ class TrustedTimeService {
       _anchorUptimeMillis = _uptime.getUptimeMillis();
     } catch (e) {
       stopwatch.stop();
+      // Re-throw so caller knows init failed, but subsequent calls to now() will fallback safely.
       throw Exception('Failed to initialize trusted time: $e');
     }
   }
@@ -107,12 +112,16 @@ class TrustedTimeService {
   /// Uses:
   /// `anchorUtc + (currentUptime - anchorUptime)`
   ///
-  /// Throws if service is not initialized.
+  /// If service is not initialized, returns system [DateTime.now().toUtc()]
+  /// and logs a warning.
   DateTime nowUtc() {
     if (!isInitialized) {
-      throw StateError(
-        'TrustedTimeService not initialized. Call initialize() first.',
+      developer.log(
+        'TrustedTimeService not initialized. Falling back to system time.',
+        name: 'TrustedTimeService',
+        level: 900, // Warning level
       );
+      return DateTime.now().toUtc();
     }
 
     final deltaMillis = _uptime.getUptimeMillis() - _anchorUptimeMillis!;
@@ -122,7 +131,7 @@ class TrustedTimeService {
 
   /// Returns trusted time adjusted by offset.
   ///
-  /// This does NOT rely on device timezone.
+  /// This does NOT rely on device timezone, unless falling back.
   /// Offset must be explicitly provided or pre-configured.
   DateTime now({int? offsetHours, int? offsetMinutes}) {
     final utc = nowUtc();
